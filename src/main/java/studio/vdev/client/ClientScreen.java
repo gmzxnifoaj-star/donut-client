@@ -2,14 +2,29 @@ package studio.vdev.client;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-
 public class ClientScreen extends Screen {
+
+    private static final int PW = 420, PH = 255;
+    private static final int BLUE1 = 0xFF2563EB;
+    private static final int BLUE2 = 0xFF38BDF8;
+    private static final int GRAY = 0xFF8FA3C0;
+
+    private static final String[] NAMES = {
+            "FPS Counter", "CPS Counter", "Keystrokes", "RGB Hotbar",
+            "Server IP", "TPS Counter", "Player Counter"};
+    private static final String[] DESCS = {
+            "Shows your frames per second",
+            "Clicks per second (left | right)",
+            "WASD, mouse and space overlay",
+            "Rainbow glow around your hotbar",
+            "Shows the server you are on",
+            "Estimated server ticks per second",
+            "Players online in the tab list"};
+
+    private int px, py;
 
     public ClientScreen() {
         super(Text.literal("VDEV Client"));
@@ -17,57 +32,34 @@ public class ClientScreen extends Screen {
 
     @Override
     protected void init() {
-        int w = 160, h = 20;
-        int x = width / 2 - w / 2;
-        int y = height / 2 - 45;
-
-        addDrawableChild(toggle("FPS Counter", () -> VDEVClient.showFps, v -> VDEVClient.showFps = v, x, y, w, h));
-        addDrawableChild(toggle("CPS Counter", () -> VDEVClient.showCps, v -> VDEVClient.showCps = v, x, y + 25, w, h));
-        addDrawableChild(toggle("Keystrokes", () -> VDEVClient.showKeys, v -> VDEVClient.showKeys = v, x, y + 50, w, h));
-        addDrawableChild(ButtonWidget.builder(Text.literal("Close"), b -> close())
-                .dimensions(x, y + 75, w, h).build());
+        px = (width - PW) / 2;
+        py = (height - PH) / 2;
     }
 
-    private ButtonWidget toggle(String name, BooleanSupplier get, Consumer<Boolean> set,
-                                int x, int y, int w, int h) {
-        return ButtonWidget.builder(label(name, get.getAsBoolean()), b -> {
-            set.accept(!get.getAsBoolean());
-            b.setMessage(label(name, get.getAsBoolean()));
-        }).dimensions(x, y, w, h).build();
-    }
-
-    private static Text label(String name, boolean on) {
-        return Text.literal(name + ": " + (on ? "ON" : "OFF"));
-    }
+    private int rowX() { return px + 128; }
+    private int rowW() { return PW - 128 - 10; }
+    private int rowY(int i) { return py + 50 + i * 27; }
 
     @Override
-    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        super.renderBackground(ctx, mouseX, mouseY, delta);
-        int pw = 190, ph = 150;
-        int x0 = width / 2 - pw / 2;
-        int y0 = height / 2 - 70;
-        ctx.fill(x0, y0, x0 + pw, y0 + ph, 0xCC0B1020);
-        ctx.fill(x0, y0, x0 + pw, y0 + 2, 0xFF55AAFF);
-    }
+    public void render(DrawContext ctx, int mx, int my, float delta) {
+        super.render(ctx, mx, my, delta);
 
-    @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        super.render(ctx, mouseX, mouseY, delta);
-        ctx.drawCenteredTextWithShadow(textRenderer, "VDEV CLIENT", width / 2, height / 2 - 62, 0xFF55AAFF);
-        ctx.drawCenteredTextWithShadow(textRenderer, "Protected by VDEV Studios", width / 2, height / 2 + 62, 0xFFAAAAAA);
-    }
+        // panel + glow
+        rr(ctx, px - 2, py - 2, PW + 4, PH + 4, 10, 0x3038BDF8, 0x302563EB, false);
+        rr(ctx, px, py, PW, PH, 8, 0xF0101A2E, 0xF00A1020, false);
 
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
-            close();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
+        // sidebar
+        int sx = px + 8, sy = py + 8, sw = 110, sh = PH - 16;
+        rr(ctx, sx, sy, sw, sh, 6, 0xCC0C1426, 0xCC0A101D, false);
+        rr(ctx, sx + 8, sy + 8, 20, 20, 5, BLUE1, BLUE2, false);
+        ctx.drawText(textRenderer, "V", sx + 15, sy + 14, 0xFFFFFFFF, false);
+        ctx.drawText(textRenderer, "VDEV", sx + 34, sy + 9, 0xFFFFFFFF, true);
+        scaled(ctx, "CLIENT", sx + 34, sy + 20, 0.7f, GRAY);
 
-    @Override
-    public boolean shouldPause() {
-        return false;
-    }
-}
+        scaled(ctx, "MODULES", sx + 10, sy + 40, 0.65f, 0xFF6B7FA0);
+        rr(ctx, sx + 6, sy + 52, sw - 12, 20, 5, BLUE1, BLUE2, true);
+        ctx.drawText(textRenderer, "Visuals", sx + 16, sy + 58, 0xFFFFFFFF, true);
+
+        // bottom status card
+        rr(ctx, sx + 6, sy + sh - 34, sw - 12, 28, 5, 0xFF111C33, 0xFF111C33, false);
+        rr(ctx, sx + 13, sy + sh - 27, 5, 5, 2, 0xFF4
