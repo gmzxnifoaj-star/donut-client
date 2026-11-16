@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "vdevclient",
+  "version": "${version}",
+  "name": "VDEV Client",
+  "description": "Visual client by VDEV Studios",
+  "authors": ["VDEV Studios"],
+  "environment": "client",
+  "entrypoints": {
+    "client": ["studio.vdev.client.VDEVClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
