@@ -3,12 +3,15 @@ package studio.vdev.client;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayDeque;
@@ -16,13 +19,41 @@ import java.util.Deque;
 
 public class VDEVClient implements ClientModInitializer {
 
-    // Toggles (changed in the Right Shift menu)
+    // Order matches the GUI rows
     public static boolean showFps = true;
     public static boolean showCps = true;
     public static boolean showKeys = true;
+    public static boolean rgbHotbar = false;
+    public static boolean showIp = true;
+    public static boolean showTps = true;
+    public static boolean showPlayers = true;
 
     // The "fake" FPS number centers around this value
     public static int fakeFpsBase = 300;
+
+    public static boolean get(int i) {
+        return switch (i) {
+            case 0 -> showFps;
+            case 1 -> showCps;
+            case 2 -> showKeys;
+            case 3 -> rgbHotbar;
+            case 4 -> showIp;
+            case 5 -> showTps;
+            default -> showPlayers;
+        };
+    }
+
+    public static void toggle(int i) {
+        switch (i) {
+            case 0 -> showFps = !showFps;
+            case 1 -> showCps = !showCps;
+            case 2 -> showKeys = !showKeys;
+            case 3 -> rgbHotbar = !rgbHotbar;
+            case 4 -> showIp = !showIp;
+            case 5 -> showTps = !showTps;
+            default -> showPlayers = !showPlayers;
+        }
+    }
 
     private static KeyBinding menuKey;
 
@@ -33,7 +64,7 @@ public class VDEVClient implements ClientModInitializer {
     private static int fpsShown = 300;
     private static long lastFpsUpdate = 0;
 
-    private static final int BLUE = 0xFF55AAFF;
+    private static final int BLUE = 0xFF4DA3FF;
     private static final int WHITE = 0xFFFFFFFF;
 
     @Override
@@ -51,6 +82,9 @@ public class VDEVClient implements ClientModInitializer {
                 }
             }
         });
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> TpsTracker.reset());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> TpsTracker.reset());
 
         HudRenderCallback.EVENT.register(VDEVClient::render);
     }
@@ -91,8 +125,43 @@ public class VDEVClient implements ClientModInitializer {
             y += 12;
         }
 
+        if (showTps) {
+            ctx.drawTextWithShadow(mc.textRenderer, "TPS: " + TpsTracker.text(), x, y, WHITE);
+            y += 12;
+        }
+
+        if (showPlayers) {
+            int count = mc.getNetworkHandler() != null ? mc.getNetworkHandler().getPlayerList().size() : 1;
+            ctx.drawTextWithShadow(mc.textRenderer, "Players: " + count, x, y, WHITE);
+            y += 12;
+        }
+
+        if (showIp) {
+            ServerInfo si = mc.getCurrentServerEntry();
+            String ip = si != null ? si.address : "Singleplayer";
+            ctx.drawTextWithShadow(mc.textRenderer, "IP: " + ip, x, y, WHITE);
+            y += 12;
+        }
+
         if (showKeys) {
             drawKeystrokes(ctx, mc, x, y + 2);
+        }
+
+        if (rgbHotbar) {
+            drawRgbHotbar(ctx, mc, now);
+        }
+    }
+
+    private static void drawRgbHotbar(DrawContext ctx, MinecraftClient mc, long now) {
+        int sw = mc.getWindow().getScaledWidth();
+        int sh = mc.getWindow().getScaledHeight();
+        int hx = sw / 2 - 91;
+        int hy = sh - 22;
+        float t = (now % 4000L) / 4000f;
+        for (int i = 0; i < 182; i++) {
+            int c = 0xFF000000 | MathHelper.hsvToRgb((t + i / 182f) % 1f, 0.8f, 1f);
+            ctx.fill(hx + i, hy - 3, hx + i + 1, hy - 1, c);
+            ctx.fill(hx + i, sh - 1, hx + i + 1, sh, c);
         }
     }
 
@@ -115,4 +184,4 @@ public class VDEVClient implements ClientModInitializer {
         int color = pressed ? 0xFF000000 : WHITE;
         ctx.drawCenteredTextWithShadow(mc.textRenderer, label, x + w / 2, y + (h - 8) / 2, color);
     }
-}
+    }
